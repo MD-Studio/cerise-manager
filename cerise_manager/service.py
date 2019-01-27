@@ -225,7 +225,7 @@ class ManagedService(ccs.Service):
         self._port = port
         """int: The port number this service runs on."""
 
-    def is_running(srv):
+    def is_running(self):
         """
         Checks whether the service is running.
 
@@ -233,22 +233,22 @@ class ManagedService(ccs.Service):
             bool: True iff the service is running.
         """
         dc = docker.from_env()
-        container = dc.containers.get(srv._name)
+        container = dc.containers.get(self._name)
         return container.status == 'running'
 
-    def start(srv):
+    def start(self):
         """
         Start a stopped service.
 
         Does nothing if the service is already running.
         """
         dc = docker.from_env()
-        container = dc.containers.get(srv._name)
+        container = dc.containers.get(self._name)
         container.start()
         # Give it some time to start, so subsequent calls work
         time.sleep(1)
 
-    def stop(srv):
+    def stop(self):
         """
         Stop a running service.
 
@@ -257,7 +257,7 @@ class ManagedService(ccs.Service):
         stopped.
         """
         dc = docker.from_env()
-        container = dc.containers.get(srv._name)
+        container = dc.containers.get(self._name)
         container.stop()
 
     def get_log(self):
