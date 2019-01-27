@@ -13,9 +13,9 @@ from cerise_manager import errors
 
 # Creating and destroying services
 
-def create_managed_service(srv_name, port, srv_type, user_name=None, password=None):
+def create_service(srv_name, port, srv_type, user_name=None, password=None):
     """
-    Creates a new managed service for a given user at a given port.
+    Creates a new service for a given user at a given port.
 
     Args:
         srv_name (str): A unique name for the service. Must be a valid
@@ -70,13 +70,14 @@ def create_managed_service(srv_name, port, srv_type, user_name=None, password=No
 
     return ManagedService(srv_name, port)
 
-def destroy_managed_service(srv):
+def destroy_service(srv):
     """
-    Destroys a managed service.
+    Destroys a service.
 
     This will make the service unavailable, and delete all
     jobs and information about them (including input and output
-    data) in this service and on the compute resource.
+    data) in this service and on the compute resource, then
+    remove the container.
 
     Args:
         srv (ManagedService): A managed service.
@@ -92,7 +93,7 @@ def destroy_managed_service(srv):
     except docker.errors.NotFound:
         raise errors.ServiceNotFound()
 
-def managed_service_exists(srv_name):
+def service_exists(srv_name):
     """
     Checks whether a managed service with the given name exists.
 
@@ -110,7 +111,7 @@ def managed_service_exists(srv_name):
     except docker.errors.NotFound:
         return False
 
-def get_managed_service(srv_name, port):
+def get_service(srv_name, port):
     """
     Gets a managed service by name and port.
 
@@ -125,14 +126,14 @@ def get_managed_service(srv_name, port):
     Raises:
         ServiceNotFound: The requested service does not exist.
     """
-    if not managed_service_exists(srv_name):
+    if not service_exists(srv_name):
         raise errors.ServiceNotFound()
     return ManagedService(srv_name, port)
 
-def require_managed_service(srv_name, port, srv_type, user_name=None, password=None):
+def require_service(srv_name, port, srv_type, user_name=None, password=None):
     """
-    Creates a new managed service for a given user at a given port, if
-    it does not already exist.
+    Creates a new service for a given user at a given port, if it does
+    not already exist.
 
     If a service with the given name already exists, it is returned
     instead and no new service is created.
@@ -156,14 +157,14 @@ def require_managed_service(srv_name, port, srv_type, user_name=None, password=N
         PortNotAvailable: The requested port is occupied.
     """
     try:
-        return create_managed_service(srv_name, port, srv_type, user_name, password)
+        return create_service(srv_name, port, srv_type, user_name, password)
     except errors.ServiceAlreadyExists:
-        return get_managed_service(srv_name, port)
+        return get_service(srv_name, port)
 
 
 # Starting and stopping managed services
 
-def managed_service_is_running(srv):
+def service_is_running(srv):
     """
     Checks whether the managed service is running.
 
@@ -174,7 +175,7 @@ def managed_service_is_running(srv):
     container = dc.containers.get(srv._name)
     return container.status == 'running'
 
-def start_managed_service(srv):
+def start_service(srv):
     """
     Start a stopped managed service.
 
@@ -186,7 +187,7 @@ def start_managed_service(srv):
     # Give it some time to start, so subsequent calls work
     time.sleep(1)
 
-def stop_managed_service(srv):
+def stop_service(srv):
     """
     Stop a running managed service.
 
@@ -235,7 +236,7 @@ def service_from_dict(srv_dict):
     Raises:
         ServiceNotFound: The requested service does not exist.
     """
-    return get_managed_service(srv_dict['name'], srv_dict['port'])
+    return get_service(srv_dict['name'], srv_dict['port'])
 
 
 class ManagedService(ccs.Service):

@@ -29,7 +29,7 @@ def test_image(request):
 def test_service(request, test_image):
     from .clean_up import clean_up_service
     clean_up_service('cerise_manager_test_service')
-    srv = cs.create_managed_service('cerise_manager_test_service', 29593,
+    srv = cs.create_service('cerise_manager_test_service', 29593,
             test_image)
 
     yield srv

@@ -43,24 +43,24 @@ def test_service_dict(request):
             'port': 29593
             }
 
-def test_managed_service_exists(test_container):
-    exists = cs.managed_service_exists('cerise_manager_test_service')
+def test_service_exists(test_container):
+    exists = cs.service_exists('cerise_manager_test_service')
     assert isinstance(exists, bool)
     assert exists
 
-def test_managed_service_does_not_exist():
-    exists = cs.managed_service_exists('cerise_manager_test_service')
+def test_service_does_not_exist():
+    exists = cs.service_exists('cerise_manager_test_service')
     assert isinstance(exists, bool)
     assert not exists
 
 
-def test_get_managed_service(test_container):
-    srv = cs.get_managed_service('cerise_manager_test_service', 29593)
+def test_get_service(test_container):
+    srv = cs.get_service('cerise_manager_test_service', 29593)
     assert isinstance(srv, cs.ManagedService)
 
-def test_get_missing_managed_service():
+def test_get_missing_service():
     with pytest.raises(ce.ServiceNotFound):
-        cs.get_managed_service('cerise_manager_test_service', 29593)
+        cs.get_service('cerise_manager_test_service', 29593)
 
 def test_service_from_dict(test_container, test_service_dict):
     srv = cs.service_from_dict(test_service_dict)
@@ -70,71 +70,71 @@ def test_missing_service_from_dict(test_service_dict):
     with pytest.raises(ce.ServiceNotFound):
         cs.service_from_dict(test_service_dict)
 
-def test_create_managed_service(docker_client):
-    srv = cs.create_managed_service('cerise_manager_test_service', 29593,
+def test_create_service(docker_client):
+    srv = cs.create_service('cerise_manager_test_service', 29593,
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
     clean_up_service('cerise_manager_test_service')
 
-def test_create_existing_managed_service(test_container):
+def test_create_existing_service(test_container):
     with pytest.raises(ce.ServiceAlreadyExists):
-        cs.create_managed_service('cerise_manager_test_service', 29593,
+        cs.create_service('cerise_manager_test_service', 29593,
                 'mdstudio/cerise:develop')
 
-def test_create_managed_service_port_occupied(test_container):
+def test_create_service_port_occupied(test_container):
     with pytest.raises(ce.PortNotAvailable):
-        cs.create_managed_service('cerise_manager_test_service2', 29593,
+        cs.create_service('cerise_manager_test_service2', 29593,
                 'mdstudio/cerise:develop')
     clean_up_service('cerise_manager_test_service2')
 
 def test_create_two_services(test_container):
-    srv = cs.create_managed_service('cerise_manager_test_service2', 29594,
+    srv = cs.create_service('cerise_manager_test_service2', 29594,
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
-    cs.destroy_managed_service(srv)
+    cs.destroy_service(srv)
 
-def test_create_managed_service_object():
+def test_create_service_object():
     srv = cs.ManagedService('cerise_manager_test_service', 29593)
     assert srv._name == 'cerise_manager_test_service'
     assert srv._port == 29593
 
-def test_destroy_managed_service(docker_client, test_service):
+def test_destroy_service(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'running'
 
-    cs.destroy_managed_service(test_service)
+    cs.destroy_service(test_service)
 
     with pytest.raises(docker.errors.NotFound):
         docker_client.containers.get('cerise_manager_test_service')
 
-def test_destroy_missing_managed_service(docker_client):
+def test_destroy_missing_service(docker_client):
     srv = cs.ManagedService('non_existing_service', 29593)
     with pytest.raises(ce.ServiceNotFound):
-        cs.destroy_managed_service(srv)
+        cs.destroy_service(srv)
 
-def test_require_managed_service(docker_client):
-    srv = cs.require_managed_service('cerise_manager_test_service', 29593,
+def test_require_service(docker_client):
+    srv = cs.require_service('cerise_manager_test_service', 29593,
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
     clean_up_service('cerise_manager_test_service')
 
-def test_require_existing_managed_service(docker_client, test_service):
-    srv = cs.require_managed_service('cerise_manager_test_service', 29593,
+def test_require_existing_service(docker_client, test_service):
+    srv = cs.require_service('cerise_manager_test_service', 29593,
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
     assert srv._name == 'cerise_manager_test_service'
     assert srv._port == 29593
 
-def test_require_managed_server_occupied_port(docker_client, test_service):
+def test_require_server_occupied_port(docker_client, test_service):
     with pytest.raises(ce.PortNotAvailable):
-        srv = cs.require_managed_service('cerise_manager_test_service2', 29593,
+        srv = cs.require_service('cerise_manager_test_service2', 29593,
                 'mdstudio/cerise:develop')
 
 def test_start_running_service(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'running'
 
-    cs.start_managed_service(test_service)
+    cs.start_service(test_service)
 
     container.reload()
     assert container.status == 'running'
@@ -146,32 +146,32 @@ def test_start_stopped_service(docker_client, test_service):
     container.reload()
     assert container.status == 'exited'
 
-    cs.start_managed_service(test_service)
+    cs.start_service(test_service)
 
     container.reload()
     assert container.status == 'running'
 
-def test_stop_running_managed_service(docker_client, test_service):
-    cs.stop_managed_service(test_service)
+def test_stop_running_service(docker_client, test_service):
+    cs.stop_service(test_service)
 
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'exited'
 
-def test_stop_stopped_managed_service(docker_client, test_service):
+def test_stop_stopped_service(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     container.stop()
     container.reload()
     assert container.status == 'exited'
 
-    cs.stop_managed_service(test_service)
+    cs.stop_service(test_service)
 
     container.reload()
     assert container.status == 'exited'
 
-def test_managed_service_is_running(docker_client, test_service):
+def test_service_is_running(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'running'
-    assert cs.managed_service_is_running(test_service)
+    assert cs.service_is_running(test_service)
 
 def test_is_not_running(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
@@ -179,7 +179,7 @@ def test_is_not_running(docker_client, test_service):
     container.reload()
     assert container.status == 'exited'
 
-    assert not cs.managed_service_is_running(test_service)
+    assert not cs.service_is_running(test_service)
 
 def test_service_to_dict(test_service):
     dict_ = cs.service_to_dict(test_service)
@@ -192,7 +192,7 @@ def test_service_serialisation(test_service):
     dict2 = json.loads(json_dict)
     srv = cs.service_from_dict(dict2)
 
-    assert cs.managed_service_is_running(srv)
+    assert cs.service_is_running(srv)
     assert srv._name == 'cerise_manager_test_service'
     assert srv._port == 29593
 
