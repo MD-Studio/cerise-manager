@@ -125,6 +125,15 @@ def test_require_existing_service(docker_client, test_service):
     assert srv._name == 'cerise_manager_test_service'
     assert srv._port == 29593
 
+def test_require_stopped_service(docker_client, test_service):
+    test_service.stop()
+    srv = cs.require_service('cerise_manager_test_service', 29593,
+            'mdstudio/cerise:develop')
+    assert isinstance(srv, cs.ManagedService)
+    assert srv._name == 'cerise_manager_test_service'
+    assert srv._port == 29593
+    assert srv.is_running()
+
 def test_require_server_occupied_port(docker_client, test_service):
     with pytest.raises(ce.PortNotAvailable):
         srv = cs.require_service('cerise_manager_test_service2', 29593,

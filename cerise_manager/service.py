@@ -159,7 +159,10 @@ def require_service(srv_name, port, srv_type, user_name=None, password=None):
     try:
         return create_service(srv_name, port, srv_type, user_name, password)
     except errors.ServiceAlreadyExists:
-        return get_service(srv_name, port)
+        srv = get_service(srv_name, port)
+        if not srv.is_running():
+            srv.start()
+        return srv
 
 
 # Serialisation of services
