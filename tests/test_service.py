@@ -134,7 +134,7 @@ def test_start_running_service(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'running'
 
-    cs.start_service(test_service)
+    test_service.start()
 
     container.reload()
     assert container.status == 'running'
@@ -146,13 +146,13 @@ def test_start_stopped_service(docker_client, test_service):
     container.reload()
     assert container.status == 'exited'
 
-    cs.start_service(test_service)
+    test_service.start()
 
     container.reload()
     assert container.status == 'running'
 
 def test_stop_running_service(docker_client, test_service):
-    cs.stop_service(test_service)
+    test_service.stop()
 
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'exited'
@@ -163,7 +163,7 @@ def test_stop_stopped_service(docker_client, test_service):
     container.reload()
     assert container.status == 'exited'
 
-    cs.stop_service(test_service)
+    test_service.stop()
 
     container.reload()
     assert container.status == 'exited'
@@ -171,7 +171,7 @@ def test_stop_stopped_service(docker_client, test_service):
 def test_service_is_running(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
     assert container.status == 'running'
-    assert cs.service_is_running(test_service)
+    assert test_service.is_running()
 
 def test_is_not_running(docker_client, test_service):
     container = docker_client.containers.get('cerise_manager_test_service')
@@ -179,7 +179,7 @@ def test_is_not_running(docker_client, test_service):
     container.reload()
     assert container.status == 'exited'
 
-    assert not cs.service_is_running(test_service)
+    assert not test_service.is_running()
 
 def test_service_to_dict(test_service):
     dict_ = cs.service_to_dict(test_service)
@@ -192,7 +192,7 @@ def test_service_serialisation(test_service):
     dict2 = json.loads(json_dict)
     srv = cs.service_from_dict(dict2)
 
-    assert cs.service_is_running(srv)
+    assert srv.is_running()
     assert srv._name == 'cerise_manager_test_service'
     assert srv._port == 29593
 

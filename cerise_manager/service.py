@@ -162,44 +162,6 @@ def require_service(srv_name, port, srv_type, user_name=None, password=None):
         return get_service(srv_name, port)
 
 
-# Starting and stopping managed services
-
-def service_is_running(srv):
-    """
-    Checks whether the managed service is running.
-
-    Returns:
-        bool: True iff the service is running.
-    """
-    dc = docker.from_env()
-    container = dc.containers.get(srv._name)
-    return container.status == 'running'
-
-def start_service(srv):
-    """
-    Start a stopped managed service.
-
-    Does nothing if the service is already running.
-    """
-    dc = docker.from_env()
-    container = dc.containers.get(srv._name)
-    container.start()
-    # Give it some time to start, so subsequent calls work
-    time.sleep(1)
-
-def stop_service(srv):
-    """
-    Stop a running managed service.
-
-    This must be done before shutting down the computer, to ensure
-    a clean shutdown. Does nothing if the service is already
-    stopped.
-    """
-    dc = docker.from_env()
-    container = dc.containers.get(srv._name)
-    container.stop()
-
-
 # Serialisation of services
 
 def service_to_dict(srv):
@@ -262,6 +224,41 @@ class ManagedService(ccs.Service):
         """str: The name of this service, and its Docker container."""
         self._port = port
         """int: The port number this service runs on."""
+
+    def is_running(srv):
+        """
+        Checks whether the service is running.
+
+        Returns:
+            bool: True iff the service is running.
+        """
+        dc = docker.from_env()
+        container = dc.containers.get(srv._name)
+        return container.status == 'running'
+
+    def start(srv):
+        """
+        Start a stopped service.
+
+        Does nothing if the service is already running.
+        """
+        dc = docker.from_env()
+        container = dc.containers.get(srv._name)
+        container.start()
+        # Give it some time to start, so subsequent calls work
+        time.sleep(1)
+
+    def stop(srv):
+        """
+        Stop a running service.
+
+        This must be done before shutting down the computer, to ensure
+        a clean shutdown. Does nothing if the service is already
+        stopped.
+        """
+        dc = docker.from_env()
+        container = dc.containers.get(srv._name)
+        container.stop()
 
     def get_log(self):
         """
