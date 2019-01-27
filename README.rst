@@ -1,3 +1,6 @@
+.. image:: https://www.travis-ci.org/MD-Studio/cerise-manager.svg?branch=develop
+    :target: https://www.travis-ci.org/MD-Studio/cerise-manager
+
 ##############
 Cerise Manager
 ##############
