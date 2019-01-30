@@ -45,7 +45,7 @@ setup(
     install_requires=[
         'cerise_client',
         'defusedxml==0.5.0',
-        'docker<3',
+        'docker<4',
         'future',
         'idna<2.8'
         ],  # FIXME: add your package's dependencies to this list
