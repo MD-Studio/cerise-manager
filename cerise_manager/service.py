@@ -1,5 +1,6 @@
 import errno
 import os
+import random
 import requests
 import tarfile
 import tempfile
@@ -13,17 +14,21 @@ from cerise_manager import errors
 
 # Creating and destroying services
 
-def create_service(srv_name, port, srv_type, user_name=None, password=None):
+_RAND_RANGE=100
+
+
+def create_service(srv_name, srv_type, port=None, user_name=None, password=None):
     """
     Creates a new service for a given user at a given port.
 
     Args:
         srv_name (str): A unique name for the service. Must be a valid
             Docker container name.
-        port (int): A unique port number on which the service will be
-            made available. It will listen only on localhost.
         srv_type (str): The type of service to launch. This is the name
             of the Docker image to use.
+        port (int): A unique port number on which the service will be
+            made available. It will listen only on localhost. If None,
+            a free port will be selected automatically.
         user_name (str): The user name to use to connect to the compute
             resource.
         password (str): The password to use to connect to the compute
@@ -38,8 +43,12 @@ def create_service(srv_name, port, srv_type, user_name=None, password=None):
     """
     dc = docker.from_env()
 
-    environment = {}
-    environment['CERISE_STORE_LOCATION_CLIENT'] = 'http://localhost:{}/files'.format(port)
+    if service_exists(srv_name):
+        raise errors.ServiceAlreadyExists()
+
+    auto_port = port is None
+    if auto_port:
+        port = 29593 + random.randrange(_RAND_RANGE)
 
     if user_name == '':
         user_name = None
@@ -49,24 +58,42 @@ def create_service(srv_name, port, srv_type, user_name=None, password=None):
     if password is not None:
         environment['CERISE_PASSWORD'] = password
 
-    try:
-        dc.containers.run(
-                srv_type,
-                name=srv_name,
-                ports={'29593/tcp': ('127.0.0.1', port) },
-                environment=environment,
-                detach=True)
-    except docker.errors.APIError as e:
-        # Bit clunky, but it's all Docker gives us...
-        if 'address already in use' in e.explanation:
-            raise errors.PortNotAvailable(e)
-        if 'port is already allocated' in e.explanation:
-            raise errors.PortNotAvailable(e)
-        if 'Conflict. The container name' in e.explanation:
-            raise errors.ServiceAlreadyExists()
-        raise
+    environment = {}
+    while not service_exists(srv_name):
+        try:
+            environment['CERISE_STORE_LOCATION_CLIENT'] = 'http://localhost:{}/files'.format(port)
 
-    time.sleep(1)
+            dc.containers.run(
+                    srv_type,
+                    name=srv_name,
+                    ports={'29593/tcp': ('127.0.0.1', port) },
+                    environment=environment,
+                    detach=True)
+            container = dc.containers.get(srv_name)
+            while container.status == 'created':
+                time.sleep(0.05)
+                container.reload()
+        except docker.errors.APIError as e:
+            # Bit clunky, but it's all Docker gives us...
+            if ('address already in use' in e.explanation or
+                    'port is already allocated' in e.explanation):
+                # The container will already exist here, but be broken due to
+                # the port not being available. Remove it again first.
+                container = dc.containers.get(srv_name)
+                container.remove()
+                try:
+                    while True:
+                        time.sleep(0.05)
+                        container.remove()
+                except docker.errors.NotFound:
+                    pass
+
+                if auto_port:
+                    port += 1
+                else:
+                    raise errors.PortNotAvailable(e)
+            else:
+                raise
 
     return ManagedService(srv_name, port)
 
@@ -111,14 +138,13 @@ def service_exists(srv_name):
     except docker.errors.NotFound:
         return False
 
-def get_service(srv_name, port):
+def get_service(srv_name):
     """
-    Gets a managed service by name and port.
+    Gets a managed service by name.
 
     Args:
         srv_name (str): Name that the service was created with. Must be
             a valid Docker container name.
-        port (int): Port number that the service was created with.
 
     Returns:
         ManagedService: The service, if it exists.
@@ -128,9 +154,14 @@ def get_service(srv_name, port):
     """
     if not service_exists(srv_name):
         raise errors.ServiceNotFound()
+
+    dc = docker.from_env()
+    service = dc.containers.get(srv_name)
+    port = int(service.attrs['HostConfig']['PortBindings']['29593/tcp'][0]['HostPort'])
+
     return ManagedService(srv_name, port)
 
-def require_service(srv_name, port, srv_type, user_name=None, password=None):
+def require_service(srv_name, srv_type, port=None, user_name=None, password=None):
     """
     Creates a new service for a given user at a given port, if it does
     not already exist.
@@ -141,10 +172,12 @@ def require_service(srv_name, port, srv_type, user_name=None, password=None):
     Args:
         srv_name (str): A unique name for the service. Must be a valid
             Docker container name.
-        port (int): A unique port number on which the service will be
-            made available. It will listen only on localhost.
         srv_type (str): The type of service to launch. This is the name
             of the Docker image to use.
+        port (int): A unique port number on which the service will be
+            made available. It will listen only on localhost. If None
+            and the service does not exist, a free port will be
+            allocated automatically.
         user_name (str): The user name to use to connect to the compute
             resource.
         password (str): The password to use to connect to the compute
@@ -157,9 +190,9 @@ def require_service(srv_name, port, srv_type, user_name=None, password=None):
         PortNotAvailable: The requested port is occupied.
     """
     try:
-        return create_service(srv_name, port, srv_type, user_name, password)
+        return create_service(srv_name, srv_type, port, user_name, password)
     except errors.ServiceAlreadyExists:
-        srv = get_service(srv_name, port)
+        srv = get_service(srv_name)
         if not srv.is_running():
             srv.start()
         return srv
@@ -180,10 +213,7 @@ def service_to_dict(srv):
         dict: A dictionary with information necessary to rebuild
             the ManagedService object.
     """
-    return {
-            'name': srv._name,
-            'port': srv._port
-            }
+    return {'name': srv._name}
 
 def service_from_dict(srv_dict):
     """
@@ -201,7 +231,7 @@ def service_from_dict(srv_dict):
     Raises:
         ServiceNotFound: The requested service does not exist.
     """
-    return get_service(srv_dict['name'], srv_dict['port'])
+    return get_service(srv_dict['name'])
 
 
 class ManagedService(ccs.Service):
