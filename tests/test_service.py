@@ -1,57 +1,12 @@
 import docker
 import json
-import os
 import pytest
-import random
-import requests
-import sys
 import time
 from unittest.mock import patch
 
-
-# clean up any mess left over from previous failed tests
-from .clean_up import clean_up
-clean_up()
-
 import cerise_manager.service as cs
 import cerise_manager.errors as ce
-from .clean_up import clean_up_service
-
-from .fixtures import docker_client, test_image
-
-
-def wait_for_status(container, status):
-    while container.status != status:
-        time.sleep(0.05)
-        container.reload()
-
-
-@pytest.fixture(scope='session')
-def test_port():
-    return 29593 + random.randrange(100)
-
-
-@pytest.fixture(scope='session')
-def test_container(request, test_image, test_port, docker_client):
-    image = docker_client.images.get(test_image)
-
-    container = docker_client.containers.run(
-            image,
-            name='cerise_manager_test_service',
-            ports={'29593/tcp': ('127.0.0.1', test_port) },
-            detach=True)
-
-    wait_for_status(container, 'running')
-
-    yield container
-
-    container.stop()
-    container.remove()
-
-
-@pytest.fixture(scope='session')
-def test_service(test_container):
-    return cs.get_service('cerise_manager_test_service')
+from .conftest import clean_up_service, wait_for_status
 
 
 def test_service_exists(test_container):
@@ -86,28 +41,28 @@ def test_create_service(docker_client):
     srv = cs.create_service('cerise_manager_test_service2',
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
-    clean_up_service('cerise_manager_test_service2')
+    clean_up_service(docker_client, 'cerise_manager_test_service2')
 
 def test_create_existing_service(test_container):
     with pytest.raises(ce.ServiceAlreadyExists):
         cs.create_service('cerise_manager_test_service',
                 'mdstudio/cerise:develop')
 
-def test_create_service_port_occupied(test_container, test_port):
+def test_create_service_port_occupied(docker_client, test_container, test_port):
     with pytest.raises(ce.PortNotAvailable):
         cs.create_service('cerise_manager_test_service2',
                 'mdstudio/cerise:develop', test_port)
-    clean_up_service('cerise_manager_test_service2')
+    clean_up_service(docker_client, 'cerise_manager_test_service2')
 
-def test_create_service_auto_port_occupied():
+def test_create_service_auto_port_occupied(docker_client):
     with patch('cerise_manager.service._RAND_RANGE', 1):
         srv0 = cs.create_service('cerise_manager_test_service2',
                 'mdstudio/cerise:develop')
         srv1 = cs.create_service('cerise_manager_test_service3',
                 'mdstudio/cerise:develop')
         assert srv0._port != srv1._port
-        clean_up_service('cerise_manager_test_service2')
-        clean_up_service('cerise_manager_test_service3')
+        clean_up_service(docker_client, 'cerise_manager_test_service2')
+        clean_up_service(docker_client, 'cerise_manager_test_service3')
 
 def test_create_two_services_and_destroy(test_container, test_port, docker_client):
     srv = cs.create_service('cerise_manager_test_service2',
@@ -132,7 +87,7 @@ def test_require_service(docker_client):
     srv = cs.require_service('cerise_manager_test_service2',
             'mdstudio/cerise:develop')
     assert isinstance(srv, cs.ManagedService)
-    clean_up_service('cerise_manager_test_service2')
+    clean_up_service(docker_client, 'cerise_manager_test_service2')
 
 def test_require_existing_service(docker_client, test_container, test_port):
     srv = cs.require_service('cerise_manager_test_service',
