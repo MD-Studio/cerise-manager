@@ -43,7 +43,7 @@ setup(
     ],
     test_suite='tests',
     install_requires=[
-        'cerise_client',
+        'cerise_client>=0.3.0',
         'defusedxml==0.5.0',
         'docker<4',
         'future',

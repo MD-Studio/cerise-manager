@@ -7,7 +7,7 @@ import tempfile
 import time
 
 import docker
-import cerise_client.service as ccs
+from cerise_client import Service
 
 from cerise_manager import errors
 
@@ -234,7 +234,7 @@ def service_from_dict(srv_dict):
     return get_service(srv_dict['name'])
 
 
-class ManagedService(ccs.Service):
+class ManagedService(Service):
     """A managed service in a Docker container.
     """
     def __init__(self, name, port):
@@ -307,11 +307,10 @@ class ManagedService(ccs.Service):
         container = dc.containers.get(self._name)
         stream, stat = container.get_archive('/var/log/cerise/cerise_backend.log')
         with tempfile.TemporaryFile() as tmp:
-            tmp.write(stream.read())
+            for chunk in stream:
+                tmp.write(chunk)
             tmp.seek(0)
             with tarfile.open(fileobj=tmp) as archive:
-                # Scope guard does not work in Python 2
-                logfile = archive.extractfile('cerise_backend.log')
-                service_log = logfile.read().decode('utf-8')
-                logfile.close()
+                with archive.extractfile('cerise_backend.log') as logfile:
+                    service_log = logfile.read().decode('utf-8')
         return service_log
