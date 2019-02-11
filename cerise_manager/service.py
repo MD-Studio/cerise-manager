@@ -9,7 +9,8 @@ import time
 import docker
 from cerise_client import Service
 
-from cerise_manager import errors
+from cerise_manager import (
+        ServiceAlreadyExists, PortNotAvailable, ServiceNotFound)
 
 
 # Creating and destroying services
@@ -44,7 +45,7 @@ def create_service(srv_name, srv_type, port=None, user_name=None, password=None)
     dc = docker.from_env()
 
     if service_exists(srv_name):
-        raise errors.ServiceAlreadyExists()
+        raise ServiceAlreadyExists()
 
     auto_port = port is None
     if auto_port:
@@ -91,7 +92,7 @@ def create_service(srv_name, srv_type, port=None, user_name=None, password=None)
                 if auto_port:
                     port += 1
                 else:
-                    raise errors.PortNotAvailable(e)
+                    raise PortNotAvailable(e)
             else:
                 raise
 
@@ -118,7 +119,7 @@ def destroy_service(srv):
         container.stop()
         container.remove()
     except docker.errors.NotFound:
-        raise errors.ServiceNotFound()
+        raise ServiceNotFound()
 
 def service_exists(srv_name):
     """
@@ -153,7 +154,7 @@ def get_service(srv_name):
         ServiceNotFound: The requested service does not exist.
     """
     if not service_exists(srv_name):
-        raise errors.ServiceNotFound()
+        raise ServiceNotFound()
 
     dc = docker.from_env()
     service = dc.containers.get(srv_name)
@@ -191,7 +192,7 @@ def require_service(srv_name, srv_type, port=None, user_name=None, password=None
     """
     try:
         return create_service(srv_name, srv_type, port, user_name, password)
-    except errors.ServiceAlreadyExists:
+    except ServiceAlreadyExists:
         srv = get_service(srv_name)
         if not srv.is_running():
             srv.start()
