@@ -1,5 +1,7 @@
 .. image:: https://www.travis-ci.org/MD-Studio/cerise-manager.svg?branch=develop
     :target: https://www.travis-ci.org/MD-Studio/cerise-manager
+.. image:: https://zenodo.org/badge/167797347.svg
+   :target: https://zenodo.org/badge/latestdoi/167797347
 
 ##############
 Cerise Manager
