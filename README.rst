@@ -1,4 +1,4 @@
-.. image:: https://www.travis-ci.org/MD-Studio/cerise-manager.svg?branch=develop
+.. image:: https://www.travis-ci.org/MD-Studio/cerise-manager.svg?branch=master
     :target: https://www.travis-ci.org/MD-Studio/cerise-manager
 
 ##############
